@@ -1,10 +1,6 @@
 package handler
 
-import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
 // SwaggerUI serves the Swagger UI HTML page.
 func SwaggerUI(c *gin.Context) {

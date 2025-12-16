@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/cina_dex_backend/internal/config"
 	apihttp "github.com/cina_dex_backend/internal/http"
+	"github.com/cina_dex_backend/internal/onchain"
 	"github.com/cina_dex_backend/internal/service"
 )
 
@@ -14,8 +16,15 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	poolSvc := service.NewPoolService()
-	loanSvc := service.NewLoanService()
+	ctx := context.Background()
+
+	chainClient, err := onchain.NewEthClient(ctx, cfg)
+	if err != nil {
+		log.Fatalf("init on-chain client: %v", err)
+	}
+
+	poolSvc := service.NewPoolService(chainClient)
+	loanSvc := service.NewLoanService(chainClient)
 
 	r := apihttp.NewRouter(cfg, poolSvc, loanSvc)
 

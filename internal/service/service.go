@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/cina_dex_backend/internal/model"
+	"github.com/cina_dex_backend/internal/onchain"
 )
 
 // PoolService defines read operations related to the lending pool.
@@ -20,38 +20,40 @@ type LoanService interface {
 	GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHealth, error)
 }
 
-// NewPoolService returns a default implementation placeholder.
-// TODO: wire this to the on-chain client once implemented.
-func NewPoolService() PoolService {
-	return &noopPoolService{}
+// NewPoolService constructs a PoolService backed by the on-chain client.
+func NewPoolService(c onchain.Client) PoolService {
+	return &poolService{client: c}
 }
 
-// NewLoanService returns a default implementation placeholder.
-// TODO: wire this to the on-chain client once implemented.
-func NewLoanService() LoanService {
-	return &noopLoanService{}
+// NewLoanService constructs a LoanService backed by the on-chain client.
+func NewLoanService(c onchain.Client) LoanService {
+	return &loanService{client: c}
 }
 
-type noopPoolService struct{}
-
-func (s *noopPoolService) GetPoolState(ctx context.Context) (*model.PoolState, error) {
-	return nil, errors.New("GetPoolState not implemented")
+type poolService struct {
+	client onchain.Client
 }
 
-func (s *noopPoolService) GetUserPosition(ctx context.Context, address string) (*model.UserPosition, error) {
-	return nil, errors.New("GetUserPosition not implemented")
+func (s *poolService) GetPoolState(ctx context.Context) (*model.PoolState, error) {
+	return s.client.GetPoolState(ctx)
 }
 
-type noopLoanService struct{}
-
-func (s *noopLoanService) ListUserLoans(ctx context.Context, address string) ([]*model.Loan, error) {
-	return nil, errors.New("ListUserLoans not implemented")
+func (s *poolService) GetUserPosition(ctx context.Context, address string) (*model.UserPosition, error) {
+	return s.client.GetUserPosition(ctx, address)
 }
 
-func (s *noopLoanService) GetLoan(ctx context.Context, id uint64) (*model.Loan, error) {
-	return nil, errors.New("GetLoan not implemented")
+type loanService struct {
+	client onchain.Client
 }
 
-func (s *noopLoanService) GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHealth, error) {
-	return nil, errors.New("GetLoanHealth not implemented")
+func (s *loanService) ListUserLoans(ctx context.Context, address string) ([]*model.Loan, error) {
+	return s.client.ListUserLoans(ctx, address)
+}
+
+func (s *loanService) GetLoan(ctx context.Context, id uint64) (*model.Loan, error) {
+	return s.client.GetLoan(ctx, id)
+}
+
+func (s *loanService) GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHealth, error) {
+	return s.client.GetLoanHealth(ctx, id)
 }

@@ -36,3 +36,33 @@ type UserPosition struct {
 	TotalRepayment  string   `json:"totalRepayment"`
 	TotalCollateral string   `json:"totalCollateral"`
 }
+
+// TxCall describes a single Ethereum transaction for the frontend to sign.
+type TxCall struct {
+	To    string `json:"to"`
+	Data  string `json:"data"`
+	Value string `json:"value"`
+}
+
+// DepositTx bundles the approve + deposit calls needed for a deposit flow.
+type DepositTx struct {
+	Approve *TxCall `json:"approve"`
+	Deposit *TxCall `json:"deposit"`
+}
+
+// BorrowTx contains the single borrow call (BNB as msg.value).
+type BorrowTx struct {
+	Borrow *TxCall `json:"borrow"`
+}
+
+// RepayTx bundles the approve + repay calls.
+type RepayTx struct {
+	Approve *TxCall `json:"approve"`
+	Repay   *TxCall `json:"repay"`
+}
+
+// LiquidateTx bundles the approve + liquidate calls.
+type LiquidateTx struct {
+	Approve   *TxCall `json:"approve"`
+	Liquidate *TxCall `json:"liquidate"`
+}

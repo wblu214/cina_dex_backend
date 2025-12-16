@@ -8,7 +8,7 @@ import (
 )
 
 // NewRouter wires routes, handlers, and middlewares.
-func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.LoanService) *gin.Engine {
+func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.LoanService, txSvc service.TxService) *gin.Engine {
 	if cfg.Env == "prod" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -19,6 +19,7 @@ func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.
 	poolHandler := handler.NewPoolHandler(poolSvc)
 	userHandler := handler.NewUserHandler(poolSvc, loanSvc)
 	loanHandler := handler.NewLoanHandler(loanSvc)
+	txHandler := handler.NewTxHandler(txSvc)
 
 	api := r.Group("/api/v1")
 	{
@@ -31,6 +32,12 @@ func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.
 
 		api.GET("/loans/:loanId", loanHandler.GetLoan)
 		api.GET("/loans/:loanId/health", loanHandler.GetLoanHealth)
+
+		// transaction building endpoints
+		api.POST("/tx/deposit", txHandler.BuildDeposit)
+		api.POST("/tx/borrow", txHandler.BuildBorrow)
+		api.POST("/tx/repay", txHandler.BuildRepay)
+		api.POST("/tx/liquidate", txHandler.BuildLiquidate)
 	}
 
 	return r

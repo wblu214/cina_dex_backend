@@ -40,5 +40,9 @@ func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.
 		api.POST("/tx/liquidate", txHandler.BuildLiquidate)
 	}
 
+	// Swagger UI & OpenAPI spec
+	r.GET("/swagger", handler.SwaggerUI)
+	r.GET("/swagger/openapi.json", handler.SwaggerSpec)
+
 	return r
 }

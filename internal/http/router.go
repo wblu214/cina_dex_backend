@@ -29,6 +29,7 @@ func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.
 		api.GET("/pool/state", poolHandler.GetPoolState)
 
 		api.GET("/users/:address/position", userHandler.GetUserPosition)
+		api.GET("/users/:address/lender-position", userHandler.GetLenderPosition)
 		api.GET("/users/:address/loans", userHandler.ListUserLoans)
 
 		api.GET("/loans/:loanId", loanHandler.GetLoan)
@@ -39,6 +40,7 @@ func NewRouter(cfg *config.Config, poolSvc service.PoolService, loanSvc service.
 
 		// transaction building endpoints
 		api.POST("/tx/deposit", txHandler.BuildDeposit)
+		api.POST("/tx/withdraw", txHandler.BuildWithdraw)
 		api.POST("/tx/borrow", txHandler.BuildBorrow)
 		api.POST("/tx/repay", txHandler.BuildRepay)
 		api.POST("/tx/liquidate", txHandler.BuildLiquidate)

@@ -61,6 +61,7 @@ var (
 	selectorGetUserLoans    = []byte{0x02, 0xbf, 0x32, 0x1f} // getUserLoans(address)
 	selectorGetLoanHealth   = []byte{0xb6, 0xe0, 0x76, 0x88} // getLoanHealth(uint256)
 	selectorLoans           = []byte{0xe1, 0xec, 0x3c, 0x68} // loans(uint256)
+	selectorGetLenderPos    = []byte{0x5d, 0x41, 0x3f, 0xa2} // getLenderPosition(address)
 	selectorGetPrice        = []byte{0x41, 0x97, 0x6e, 0x09} // getPrice(address)
 )
 
@@ -127,6 +128,35 @@ func (c *EthClient) GetUserPosition(ctx context.Context, address string) (*model
 		TotalPrincipal:  totalPrincipal.String(),
 		TotalRepayment:  totalRepayment.String(),
 		TotalCollateral: totalCollateral.String(),
+	}, nil
+}
+
+// GetLenderPosition calls LendingPool.getLenderPosition(address).
+func (c *EthClient) GetLenderPosition(ctx context.Context, address string) (*model.LenderPosition, error) {
+	addr := common.HexToAddress(address)
+
+	data := make([]byte, len(selectorGetLenderPos)+32)
+	copy(data, selectorGetLenderPos)
+	copy(data[len(selectorGetLenderPos):], packAddress(addr))
+
+	out, err := c.call(ctx, data)
+	if err != nil {
+		return nil, fmt.Errorf("call getLenderPosition: %w", err)
+	}
+
+	// (uint256 fTokenBalance, uint256 exchangeRate, uint256 underlyingBalance)
+	words, err := splitWords(out, 3)
+	if err != nil {
+		return nil, fmt.Errorf("decode getLenderPosition: %w", err)
+	}
+
+	return &model.LenderPosition{
+		Address:           addr.Hex(),
+		FTokenBalance:     words[0].String(),
+		ExchangeRate:      words[1].String(),
+		UnderlyingBalance: words[2].String(),
+		NetDeposited:      "0", // filled by service layer if off-chain tracking is implemented
+		Interest:          "0", // filled by service layer
 	}, nil
 }
 

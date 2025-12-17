@@ -37,6 +37,23 @@ func (h *UserHandler) GetUserPosition(c *gin.Context) {
 	c.JSON(http.StatusOK, response.Success(pos))
 }
 
+// GetLenderPosition returns LP position & earnings info for a user.
+func (h *UserHandler) GetLenderPosition(c *gin.Context) {
+	address := c.Param("address")
+	if address == "" {
+		c.JSON(http.StatusBadRequest, response.Error(4001, "address is required"))
+		return
+	}
+
+	lp, err := h.poolSvc.GetLenderPosition(c.Request.Context(), address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error(1001, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success(lp))
+}
+
 // ListUserLoans returns all loans for a given user address.
 func (h *UserHandler) ListUserLoans(c *gin.Context) {
 	address := c.Param("address")

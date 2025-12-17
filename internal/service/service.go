@@ -11,6 +11,8 @@ import (
 type PoolService interface {
 	GetPoolState(ctx context.Context) (*model.PoolState, error)
 	GetUserPosition(ctx context.Context, address string) (*model.UserPosition, error)
+	// GetLenderPosition returns LP position and earnings info for a given address.
+	GetLenderPosition(ctx context.Context, address string) (*model.LenderPosition, error)
 }
 
 // LoanService defines operations related to individual loans.
@@ -40,6 +42,19 @@ func (s *poolService) GetPoolState(ctx context.Context) (*model.PoolState, error
 
 func (s *poolService) GetUserPosition(ctx context.Context, address string) (*model.UserPosition, error) {
 	return s.client.GetUserPosition(ctx, address)
+}
+
+func (s *poolService) GetLenderPosition(ctx context.Context, address string) (*model.LenderPosition, error) {
+	lp, err := s.client.GetLenderPosition(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: replace this stub with real off-chain tracking of netDeposited (total deposits - total withdrawals).
+	lp.NetDeposited = "0"
+	lp.Interest = lp.UnderlyingBalance // until netDeposited is wired, treat全部为收益的上界展示
+
+	return lp, nil
 }
 
 type loanService struct {

@@ -19,6 +19,9 @@ type TxService interface {
 	BuildBorrowTx(ctx context.Context, amount string, duration uint64, collateralWei string) (*model.BorrowTx, error)
 	BuildRepayTx(ctx context.Context, loanID uint64) (*model.RepayTx, error)
 	BuildLiquidateTx(ctx context.Context, loanID uint64) (*model.LiquidateTx, error)
+	// BuildWithdrawTx builds a withdraw(amount) call for LPs to redeem FToken shares
+	// back to USDT. The amount is the FToken amount in its smallest unit (18 decimals).
+	BuildWithdrawTx(ctx context.Context, fTokenAmount string) (*model.WithdrawTx, error)
 	// BuildMintMockUSDTTx builds a single mint(to, amount) call for MockUSDT on testnet.
 	// It is intended for frontend faucets where the owner wallet signs the tx.
 	BuildMintMockUSDTTx(ctx context.Context, to, amount string) (*model.TxCall, error)
@@ -36,6 +39,7 @@ type txService struct {
 var (
 	selectorERC20Approve = []byte{0x09, 0x5e, 0xa7, 0xb3} // approve(address,uint256)
 	selectorDeposit      = []byte{0xb6, 0xb5, 0x5f, 0x25} // deposit(uint256)
+	selectorWithdraw     = []byte{0x2e, 0x1a, 0x7d, 0x4d} // withdraw(uint256)
 	selectorBorrow       = []byte{0x0e, 0xcb, 0xcd, 0xab} // borrow(uint256,uint256)
 	selectorRepay        = []byte{0x37, 0x1f, 0xd8, 0xe6} // repay(uint256)
 	selectorLiquidate    = []byte{0x41, 0x5f, 0x12, 0x40} // liquidate(uint256)
@@ -118,6 +122,32 @@ func (s *txService) BuildBorrowTx(ctx context.Context, amount string, duration u
 
 	return &model.BorrowTx{
 		Borrow: borrow,
+	}, nil
+}
+
+// BuildWithdrawTx builds a withdraw(uint256 amount) call for LPs to redeem
+// FToken shares back to USDT. The amount is the FToken amount in its smallest
+// unit (18 decimals). The exact USDT received is determined by the on-chain
+// exchangeRate at execution time.
+func (s *txService) BuildWithdrawTx(ctx context.Context, fTokenAmount string) (*model.WithdrawTx, error) {
+	amt, err := parseBig(fTokenAmount)
+	if err != nil {
+		return nil, fmt.Errorf("invalid fTokenAmount: %w", err)
+	}
+
+	// withdraw(uint256 amount)
+	data := make([]byte, len(selectorWithdraw)+32)
+	copy(data, selectorWithdraw)
+	copy(data[len(selectorWithdraw):], packUint256(amt))
+
+	withdraw := &model.TxCall{
+		To:    s.poolAddr.Hex(),
+		Data:  bytesToHex(data),
+		Value: "0",
+	}
+
+	return &model.WithdrawTx{
+		Withdraw: withdraw,
 	}, nil
 }
 

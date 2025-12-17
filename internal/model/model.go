@@ -67,6 +67,25 @@ type LiquidateTx struct {
 	Liquidate *TxCall `json:"liquidate"`
 }
 
+// WithdrawTx contains the single withdraw call for LP redemptions.
+type WithdrawTx struct {
+	Withdraw *TxCall `json:"withdraw"`
+}
+
+// LenderPosition mirrors LendingPool.getLenderPosition(address).
+// All numeric fields are encoded as decimal strings.
+type LenderPosition struct {
+	Address           string `json:"address"`
+	FTokenBalance     string `json:"fTokenBalance"`
+	ExchangeRate      string `json:"exchangeRate"`
+	UnderlyingBalance string `json:"underlyingBalance"`
+	// NetDeposited is the user's historical net deposit amount (total deposits - total withdrawals),
+	// denominated in USDT smallest units (6 decimals). It is tracked off-chain.
+	NetDeposited string `json:"netDeposited"`
+	// Interest is the current realized interest = underlyingBalance - netDeposited.
+	Interest string `json:"interest"`
+}
+
 // BorrowQuote describes the required collateral for a desired borrow amount.
 // It is computed off-chain using the on-chain price oracle and risk parameters.
 type BorrowQuote struct {

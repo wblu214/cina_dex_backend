@@ -16,6 +16,8 @@ type Client interface {
 	ListUserLoans(ctx context.Context, address string) ([]*model.Loan, error)
 	GetLoan(ctx context.Context, id uint64) (*model.Loan, error)
 	GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHealth, error)
+	// GetLenderPosition reads the LP position for a lender (fToken balance, exchangeRate, underlyingBalance).
+	GetLenderPosition(ctx context.Context, address string) (*model.LenderPosition, error)
 	// GetNativePrice returns the BNB/USD price with 18 decimals from ChainlinkOracle.getPrice(address(0)).
 	GetNativePrice(ctx context.Context) (*big.Int, error)
 }

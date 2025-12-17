@@ -44,6 +44,15 @@ type liquidateTxRequest struct {
 	LoanID uint64 `json:"loanId"`
 }
 
+// withdrawTxRequest is used to build a withdraw tx for LPs.
+type withdrawTxRequest struct {
+	UserAddress string `json:"userAddress"`
+	// FTokenAmount is the FToken share amount to redeem, in smallest units
+	// (18 decimals). The actual USDT received is determined by the on-chain
+	// exchangeRate at execution time.
+	FTokenAmount string `json:"fTokenAmount" binding:"required"`
+}
+
 // mintMockUSDTRequest is used to build a MockUSDT mint tx.
 type mintMockUSDTRequest struct {
 	// To is the recipient address that will receive minted MockUSDT.
@@ -112,6 +121,23 @@ func (h *TxHandler) BuildLiquidate(c *gin.Context) {
 	}
 
 	tx, err := h.txSvc.BuildLiquidateTx(c.Request.Context(), req.LoanID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.Error(1001, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success(tx))
+}
+
+// BuildWithdraw builds a withdraw tx for LPs, redeeming FToken shares back to USDT.
+func (h *TxHandler) BuildWithdraw(c *gin.Context) {
+	var req withdrawTxRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, response.Error(4001, err.Error()))
+		return
+	}
+
+	tx, err := h.txSvc.BuildWithdrawTx(c.Request.Context(), req.FTokenAmount)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.Error(1001, err.Error()))
 		return

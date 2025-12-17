@@ -111,6 +111,7 @@ Base path：`/api/v1`
 | 单笔贷款详情     | GET  | `/api/v1/loans/{loanId}`             | 借款详情                      |
 | 单笔贷款健康度   | GET  | `/api/v1/loans/{loanId}/health`      | LTV 与是否可清算              |
 | 构造存款交易     | POST | `/api/v1/tx/deposit`                 | 返回 approve + deposit 调用   |
+| 构造提取交易     | POST | `/api/v1/tx/withdraw`                | 返回 withdraw 调用（赎回 LP 份额） |
 | 构造借款交易     | POST | `/api/v1/tx/borrow`                  | 返回 borrow 调用（带 BNB 抵押） |
 | 构造还款交易     | POST | `/api/v1/tx/repay`                   | 返回 approve + repay 调用     |
 | 构造清算交易     | POST | `/api/v1/tx/liquidate`               | 返回 approve + liquidate 调用 |
@@ -169,6 +170,10 @@ export interface TxCall {
 export interface DepositTx {
   approve: TxCall;
   deposit: TxCall;
+}
+
+export interface WithdrawTx {
+  withdraw: TxCall;
 }
 
 export interface BorrowTx {
@@ -330,7 +335,48 @@ export async function buildDepositTx(
 
 前端可将这两个 `TxCall` 按顺序交给钱包（例如 wagmi/ethers.js）发送。
 
-### 5.8 构造借款交易：`POST /api/v1/tx/borrow`
+### 5.8 构造提取交易（赎回 LP 份额）：`POST /api/v1/tx/withdraw`
+
+请求体：
+
+```json
+{
+  "userAddress": "0x...",          // 可选
+  "fTokenAmount": "1000000000000000000" // 必填，FToken 数量（最小单位，18 decimals）
+}
+```
+
+说明：
+
+- 存款人本质上持有的是 LP 份额 `FToken(cUSDT)`；提取时是把 FToken 赎回为 USDT。
+- `fTokenAmount` 是要赎回的 FToken 数量，单位为最小单位（18 位小数）。
+- 实际拿回的 USDT 数量由链上当前的 `exchangeRate` 决定：
+  - `usdtOut ≈ fTokenAmount * exchangeRate / 1e18`
+
+示例：
+
+```ts
+export interface BuildWithdrawRequest {
+  userAddress?: string;
+  fTokenAmount: string; // FToken 最小单位（18 decimals）
+}
+
+export async function buildWithdrawTx(
+  payload: BuildWithdrawRequest
+): Promise<WithdrawTx> {
+  return apiPost<WithdrawTx>("/api/v1/tx/withdraw", payload);
+}
+```
+
+返回的 `WithdrawTx.withdraw` 就是一笔调用 `withdraw(uint256 amount)` 的交易：
+
+- `to`：`LendingPool` 地址；
+- `data`：ABI 编码后的 `withdraw(fTokenAmount)`；
+- `value`：恒为 `"0"`。
+
+前端将这笔 `TxCall` 交给钱包发送即可完成赎回。
+
+### 5.9 构造借款交易：`POST /api/v1/tx/borrow`
 
 请求体：
 
@@ -362,7 +408,7 @@ export async function buildBorrowTx(
 
 返回的 `BorrowTx.borrow.value` 即应该作为交易的 `value`（BNB 抵押），`to` 和 `data` 用于调用 `borrow(amount,duration)`。
 
-### 5.9 构造还款交易：`POST /api/v1/tx/repay`
+### 5.10 构造还款交易：`POST /api/v1/tx/repay`
 
 请求体：
 
@@ -390,7 +436,7 @@ export async function buildRepayTx(
 
 返回的 `RepayTx` 同样包含两笔调用：`approve` + `repay`。
 
-### 5.10 构造清算交易：`POST /api/v1/tx/liquidate`
+### 5.11 构造清算交易：`POST /api/v1/tx/liquidate`
 
 请求体：
 
@@ -451,4 +497,3 @@ export async function GET() {
 ---
 
 通过以上约定与示例，前端只需依赖 `NEXT_PUBLIC_CINA_API_BASE_URL` 和统一的 `ApiResponse<T>` 包装，即可安全、稳定地调用当前 Go 后端所有接口。若后续接口有变更，请同步更新本文件与 `docs/openapi.json`。
-

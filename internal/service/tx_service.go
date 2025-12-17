@@ -19,6 +19,9 @@ type TxService interface {
 	BuildBorrowTx(ctx context.Context, amount string, duration uint64, collateralWei string) (*model.BorrowTx, error)
 	BuildRepayTx(ctx context.Context, loanID uint64) (*model.RepayTx, error)
 	BuildLiquidateTx(ctx context.Context, loanID uint64) (*model.LiquidateTx, error)
+	// BuildMintMockUSDTTx builds a single mint(to, amount) call for MockUSDT on testnet.
+	// It is intended for frontend faucets where the owner wallet signs the tx.
+	BuildMintMockUSDTTx(ctx context.Context, to, amount string) (*model.TxCall, error)
 }
 
 // txService is the default implementation of TxService.
@@ -36,6 +39,7 @@ var (
 	selectorBorrow       = []byte{0x0e, 0xcb, 0xcd, 0xab} // borrow(uint256,uint256)
 	selectorRepay        = []byte{0x37, 0x1f, 0xd8, 0xe6} // repay(uint256)
 	selectorLiquidate    = []byte{0x41, 0x5f, 0x12, 0x40} // liquidate(uint256)
+	selectorMockUSDTMint = []byte{0x40, 0xc1, 0x0f, 0x19} // mint(address,uint256)
 )
 
 // NewTxService constructs a TxService; it infers the USDT/MockUSDT address
@@ -178,6 +182,37 @@ func (s *txService) BuildLiquidateTx(ctx context.Context, loanID uint64) (*model
 	return &model.LiquidateTx{
 		Approve:   approve,
 		Liquidate: liq,
+	}, nil
+}
+
+// BuildMintMockUSDTTx builds a mint(to, amount) call for MockUSDT on testnet.
+// - to: recipient address (0x...)
+// - amount: decimal string in the token's smallest unit (6 decimals for MockUSDT/USDT).
+// This is intended for testnet faucets where the owner wallet signs and sends the tx.
+func (s *txService) BuildMintMockUSDTTx(ctx context.Context, to, amount string) (*model.TxCall, error) {
+	// Guard: only allow when a MockUSDT address is configured (i.e. testnet).
+	if s.cfg.ChainConfig.MockUSDT == "" {
+		return nil, fmt.Errorf("mockUsdt not configured for current chain")
+	}
+	if !isHexAddress(to) {
+		return nil, fmt.Errorf("invalid recipient address: %s", to)
+	}
+
+	amt, err := parseBig(amount)
+	if err != nil {
+		return nil, fmt.Errorf("invalid amount: %w", err)
+	}
+
+	// mint(address to, uint256 amount)
+	data := make([]byte, len(selectorMockUSDTMint)+64)
+	copy(data, selectorMockUSDTMint)
+	copy(data[len(selectorMockUSDTMint):], packAddress(common.HexToAddress(to)))
+	copy(data[len(selectorMockUSDTMint)+32:], packUint256(amt))
+
+	return &model.TxCall{
+		To:    s.tokenAddr.Hex(),
+		Data:  bytesToHex(data),
+		Value: "0",
 	}, nil
 }
 

@@ -25,12 +25,13 @@ func main() {
 
 	poolSvc := service.NewPoolService(chainClient)
 	loanSvc := service.NewLoanService(chainClient)
+	quoteSvc := service.NewQuoteService(chainClient)
 	txSvc, err := service.NewTxService(cfg, chainClient)
 	if err != nil {
 		log.Fatalf("init tx service: %v", err)
 	}
 
-	r := apihttp.NewRouter(cfg, poolSvc, loanSvc, txSvc)
+	r := apihttp.NewRouter(cfg, poolSvc, loanSvc, txSvc, quoteSvc)
 
 	addr := ":" + cfg.HTTPPort
 	log.Printf("starting API server on %s (env=%s, chain=%s)", addr, cfg.Env, cfg.ChainEnv)

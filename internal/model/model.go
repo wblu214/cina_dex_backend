@@ -66,3 +66,16 @@ type LiquidateTx struct {
 	Approve   *TxCall `json:"approve"`
 	Liquidate *TxCall `json:"liquidate"`
 }
+
+// BorrowQuote describes the required collateral for a desired borrow amount.
+// It is computed off-chain using the on-chain price oracle and risk parameters.
+type BorrowQuote struct {
+	// BorrowAmount is the requested USDT principal in smallest units (6 decimals).
+	BorrowAmount string `json:"borrowAmount"`
+	// CollateralWei is the required BNB collateral in wei (18 decimals).
+	CollateralWei string `json:"collateralWei"`
+	// BnbUsdPrice is the BNB/USD price used for the quote, 18 decimals.
+	BnbUsdPrice string `json:"bnbUsdPrice"`
+	// MaxLTVPercent is the max LTV used in this quote, e.g. "75" for 75%.
+	MaxLTVPercent string `json:"maxLtvPercent"`
+}

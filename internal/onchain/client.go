@@ -2,6 +2,7 @@ package onchain
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/cina_dex_backend/internal/model"
 )
@@ -15,5 +16,6 @@ type Client interface {
 	ListUserLoans(ctx context.Context, address string) ([]*model.Loan, error)
 	GetLoan(ctx context.Context, id uint64) (*model.Loan, error)
 	GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHealth, error)
+	// GetNativePrice returns the BNB/USD price with 18 decimals from ChainlinkOracle.getPrice(address(0)).
+	GetNativePrice(ctx context.Context) (*big.Int, error)
 }
-

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/cina_dex_backend/internal/config"
 	"github.com/cina_dex_backend/internal/model"
@@ -21,6 +22,7 @@ import (
 type EthClient struct {
 	rpc         *ethclient.Client
 	lendingPool common.Address
+	oracle      common.Address
 }
 
 // NewEthClient dials the configured RPC endpoint and prepares a client that
@@ -35,10 +37,18 @@ func NewEthClient(ctx context.Context, cfg *config.Config) (*EthClient, error) {
 		return nil, fmt.Errorf("dial rpc: %w", err)
 	}
 
-	return &EthClient{
+	client := &EthClient{
 		rpc:         rpc,
 		lendingPool: common.HexToAddress(cfg.ChainConfig.LendingPool),
-	}, nil
+	}
+
+	// Oracle address is optional; some environments (e.g. mainnet during early setup)
+	// may not have it configured yet.
+	if cfg.ChainConfig.ChainlinkOracle != "" && isHexAddress(cfg.ChainConfig.ChainlinkOracle) {
+		client.oracle = common.HexToAddress(cfg.ChainConfig.ChainlinkOracle)
+	}
+
+	return client, nil
 }
 
 // Ensure EthClient implements Client.
@@ -51,6 +61,7 @@ var (
 	selectorGetUserLoans    = []byte{0x02, 0xbf, 0x32, 0x1f} // getUserLoans(address)
 	selectorGetLoanHealth   = []byte{0xb6, 0xe0, 0x76, 0x88} // getLoanHealth(uint256)
 	selectorLoans           = []byte{0xe1, 0xec, 0x3c, 0x68} // loans(uint256)
+	selectorGetPrice        = []byte{0x41, 0x97, 0x6e, 0x09} // getPrice(address)
 )
 
 // GetPoolState calls LendingPool.getPoolState() and maps the result to model.PoolState.
@@ -219,6 +230,37 @@ func (c *EthClient) GetLoanHealth(ctx context.Context, id uint64) (*model.LoanHe
 	}, nil
 }
 
+// GetNativePrice reads BNB/USD price from ChainlinkOracle.getPrice(address(0)).
+// It returns a uint256 with 18 decimals, for example 2000e18 for $2000.
+func (c *EthClient) GetNativePrice(ctx context.Context) (*big.Int, error) {
+	if (c.oracle == common.Address{}) {
+		return nil, fmt.Errorf("oracle address not configured")
+	}
+
+	// getPrice(address(0))
+	data := make([]byte, len(selectorGetPrice)+32)
+	copy(data, selectorGetPrice)
+	// asset = address(0) encoded as a 32-byte word.
+	var zero common.Address
+	copy(data[len(selectorGetPrice):], packAddress(zero))
+
+	msg := ethereum.CallMsg{
+		To:   &c.oracle,
+		Data: data,
+	}
+
+	out, err := c.rpc.CallContract(ctx, msg, nil)
+	if err != nil {
+		return nil, fmt.Errorf("call getPrice(address(0)): %w", err)
+	}
+	if len(out) < 32 {
+		return nil, fmt.Errorf("getPrice output too short")
+	}
+
+	price := new(big.Int).SetBytes(out[0:32])
+	return price, nil
+}
+
 // call executes a read-only call against the LendingPool contract.
 func (c *EthClient) call(ctx context.Context, data []byte) ([]byte, error) {
 	msg := ethereum.CallMsg{
@@ -281,4 +323,15 @@ func packUint64(v uint64) []byte {
 	b := new(big.Int).SetUint64(v).Bytes()
 	copy(word[32-len(b):], b)
 	return word
+}
+
+// isHexAddress performs a minimal check for an Ethereum hex address string.
+func isHexAddress(s string) bool {
+	if len(s) != 42 {
+		return false
+	}
+	if !strings.HasPrefix(s, "0x") && !strings.HasPrefix(s, "0X") {
+		return false
+	}
+	return true
 }

@@ -17,6 +17,8 @@ func NewPoolHandler(poolSvc service.PoolService) *PoolHandler {
 	return &PoolHandler{poolSvc: poolSvc}
 }
 
+
+
 // GetPoolState returns aggregated pool state for the frontend dashboard.
 func (h *PoolHandler) GetPoolState(c *gin.Context) {
 	state, err := h.poolSvc.GetPoolState(c.Request.Context())

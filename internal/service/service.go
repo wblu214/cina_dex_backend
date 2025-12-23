@@ -23,8 +23,11 @@ type LoanService interface {
 }
 
 // NewPoolService constructs a PoolService backed by the on-chain client.
-func NewPoolService(c onchain.Client) PoolService {
-	return &poolService{client: c}
+func NewPoolService(c onchain.Client, cache *StateCache) PoolService {
+	return &poolService{
+		client: c,
+		cache:  cache,
+	}
 }
 
 // NewLoanService constructs a LoanService backed by the on-chain client.
@@ -34,9 +37,15 @@ func NewLoanService(c onchain.Client) LoanService {
 
 type poolService struct {
 	client onchain.Client
+	cache  *StateCache
 }
 
 func (s *poolService) GetPoolState(ctx context.Context) (*model.PoolState, error) {
+	if s.cache != nil {
+		if ps, ok := s.cache.GetPoolState(); ok {
+			return ps, nil
+		}
+	}
 	return s.client.GetPoolState(ctx)
 }
 

@@ -19,11 +19,15 @@ type QuoteService interface {
 // quoteService is the default implementation of QuoteService.
 type quoteService struct {
 	client onchain.Client
+	cache  *StateCache
 }
 
 // NewQuoteService constructs a QuoteService backed by the on-chain client.
-func NewQuoteService(c onchain.Client) QuoteService {
-	return &quoteService{client: c}
+func NewQuoteService(c onchain.Client, cache *StateCache) QuoteService {
+	return &quoteService{
+		client: c,
+		cache:  cache,
+	}
 }
 
 // Risk parameters mirrored from the LendingPool contract / documentation.
@@ -55,9 +59,22 @@ func (s *quoteService) QuoteBorrowCollateral(ctx context.Context, amount string)
 		return nil, fmt.Errorf("amount must be positive")
 	}
 
-	price, err := s.client.GetNativePrice(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get native price: %w", err)
+	var (
+		price *big.Int
+		err   error
+	)
+
+	// Prefer cached price if available, fall back to on-chain call.
+	if s.cache != nil {
+		if p, ok := s.cache.GetNativePrice(); ok {
+			price = p
+		}
+	}
+	if price == nil {
+		price, err = s.client.GetNativePrice(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("get native price: %w", err)
+		}
 	}
 	if price.Sign() <= 0 {
 		return nil, fmt.Errorf("oracle returned non-positive price")

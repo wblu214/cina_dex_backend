@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/cina_dex_backend/internal/config"
 	apihttp "github.com/cina_dex_backend/internal/http"
@@ -23,9 +24,14 @@ func main() {
 		log.Fatalf("init on-chain client: %v", err)
 	}
 
-	poolSvc := service.NewPoolService(chainClient)
+	// cache holds periodically refreshed pool state and price.
+	stateCache := service.NewStateCache()
+	// start background job: refresh every 3 minutes.
+	service.StartStateUpdater(ctx, chainClient, stateCache, 3*time.Minute)
+
+	poolSvc := service.NewPoolService(chainClient, stateCache)
 	loanSvc := service.NewLoanService(chainClient)
-	quoteSvc := service.NewQuoteService(chainClient)
+	quoteSvc := service.NewQuoteService(chainClient, stateCache)
 	txSvc, err := service.NewTxService(cfg, chainClient)
 	if err != nil {
 		log.Fatalf("init tx service: %v", err)

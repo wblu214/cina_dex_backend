@@ -90,7 +90,6 @@ func (c *EthClient) GetPoolState(ctx context.Context) (*model.PoolState, error) 
 	}, nil
 }
 
-// GetUserPosition calls LendingPool.getUserPosition(address).
 func (c *EthClient) GetUserPosition(ctx context.Context, address string) (*model.UserPosition, error) {
 	addr := common.HexToAddress(address)
 
